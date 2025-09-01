@@ -4,24 +4,37 @@ env:
   variables:
     S3_BUCKET: "cicdbucket-3601"
 
-phases: 
+phases:
   install:
     runtime-versions:
       python: 3.9
     commands:
-      - echo "Installing NPM dependencies..."
+      - set -e
+      - echo "Installing Python dependencies into lambda/..."
       - pip install -r lambda/requirements.txt -t lambda/
-    build:
-      commands:
-        - echo "Building lambda project..."
-        - cd lambda
-        - zip -r ../lambda.zip .
-        - cd ..
-    post_build:
-      commands:
-        - echo "Uploading to S3..."
-        - aws s3 cp lambda.zip s3://$S3_BUCKET/lambda.zip
-        - echo "Build completed."
+      - |
+        # ensure `zip` is available in the build image
+        if ! command -v zip >/dev/null 2>&1; then
+          echo "zip not found, attempting to install..."
+          if command -v yum >/dev/null 2>&1; then yum install -y zip; fi
+          if command -v apt-get >/dev/null 2>&1; then apt-get update && apt-get install -y zip; fi
+        fi
+
+  build:
+    commands:
+      - echo "Building lambda.zip from lambda/ directory..."
+      - cd lambda
+      - zip -r ../lambda.zip .
+      - cd ..
+      - echo "lambda.zip contents:"
+      - ls -l lambda.zip || (echo "ERROR: lambda.zip not found" && exit 1)
+
+  post_build:
+    commands:
+      - echo "Uploading lambda.zip to s3://$S3_BUCKET/lambda.zip"
+      - aws s3 cp lambda.zip s3://$S3_BUCKET/lambda.zip
+      - echo "Upload complete. Build finished."
+
 artifacts:
   files:
     - lambda.zip

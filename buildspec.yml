@@ -27,7 +27,7 @@ phases:
       - zip -r ../lambda.zip .
       - cd ..
       - echo "lambda.zip contents:"
-      - ls -l lambda.zip || (echo "ERROR: lambda.zip not found" && exit 1)
+      - ls -l lambda.zip
 
   post_build:
     commands:
